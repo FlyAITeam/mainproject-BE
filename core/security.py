@@ -5,7 +5,6 @@ from passlib.context import CryptContext
 import os
 from pytz import timezone
 from dotenv import load_dotenv
-
 load_dotenv()
 
 # Secret key to encode and decode JWT
