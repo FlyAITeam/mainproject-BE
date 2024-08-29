@@ -1,2 +1,0 @@
-*.pt filter=lfs diff=lfs merge=lfs -text
-TSRNet-63.pt filter=lfs diff=lfs merge=lfs -text
