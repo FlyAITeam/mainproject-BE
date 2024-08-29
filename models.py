@@ -116,6 +116,6 @@ class ExerciseLog(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     dogId = Column(Integer, ForeignKey('dog.id'))
     date = Column(DateTime(timezone=True), nullable=False)
-    exercise = Column(Integer, nullable=False)
+    exercise = Column(Float, nullable=False)
     
     dog = relationship('Dog', back_populates='exerciseLogs')

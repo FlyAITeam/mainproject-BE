@@ -5,8 +5,9 @@ WORKDIR /app
 # requirements.txt 파일을 컨테이너의 /app 디렉토리로 복사
 COPY requirements.txt /app
 
+RUN pip install --upgrade pip
 # requirements.txt에 명시된 필요한 패키지를 설치
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --default-timeout=100 -r requirements.txt
 
 # 현재 디렉토리의 나머지 파일들을 컨테이너의 /app 디렉토리로 복사
 COPY . /app

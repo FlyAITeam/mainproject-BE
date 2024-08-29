@@ -137,9 +137,6 @@ def create_sequence(db: Session, sequence: schemas.SequenceCreate) -> models.Seq
 def get_sequence(db: Session, sequence_id: int) -> models.Sequence:
     return db.query(models.Sequence).filter(models.Sequence.id == sequence_id).first()
 
-def get_sequences_by_dog(db: Session, dog_id: int) -> list[models.Sequence]:
-    return db.query(models.Sequence).filter(models.Sequence.dogId == dog_id).all()
-
 # Bcgdata CRUD
 def create_bcgdata(db: Session, bcgdata: schemas.BcgdataCreate) -> models.Bcgdata:
     db_bcgdata = models.Bcgdata(**bcgdata.dict())
@@ -162,13 +159,35 @@ def create_target_exercise(db: Session, target_exercise: schemas.TargetExerciseC
 def get_target_exercise(db: Session, dog_id: int) -> models.TargetExercise:
     return db.query(models.TargetExercise).filter(models.TargetExercise.dogId == dog_id).first()
 
-def update_target_exercise(db: Session, dog_id: int, tempExcercise: float) -> models.TargetExercise:
+def update_today_exercise(db: Session, dog_id: int, tempExcercise: float) -> models.TargetExercise:
     target_exercise = get_target_exercise(db, dog_id)
     if target_exercise:
         target_exercise.today = target_exercise.today + tempExcercise
         db.commit()
         db.refresh(target_exercise)
     return target_exercise
+
+def update_target_exercise(db: Session, dog_id: int, targetNum: float) -> models.TargetExercise:
+    target_exercise = get_target_exercise(db, dog_id)
+    if target_exercise:
+        target_exercise.target = targetNum
+        db.commit()
+        db.refresh(target_exercise)
+    return target_exercise
+
+def get_last_days_average_exercise(db: Session, dog_id: int, yToday:float, yTarget:float) -> float:
+    target_exercises = db.query(models.ExerciseLog).filter(
+        models.ExerciseLog.dogId == dog_id
+    ).order_by(
+        models.ExerciseLog.id.desc()
+    ).limit(10).all()
+    if len(target_exercises) < 5:
+        return_exercise = yTarget
+    elif len(target_exercises) == 5:
+        return_exercise = sum([target.exercise for target in target_exercises]) / 5
+    else:
+        return_exercise = (yToday + yTarget) / 2
+    return return_exercise
 
 # ExerciseLog CRUD
 def create_exercise_log(db: Session, exercise_log: schemas.ExerciseLogCreate) -> models.ExerciseLog:
@@ -190,7 +209,7 @@ def delete_exercise_log(db: Session, log_id: int):
 
 # 특정 강아지의 모든 시퀀스를 조회하는 함수
 def get_sequences_by_dog(db: Session, dog_id: int) -> list[models.Sequence]:
-    return db.query(models.Sequence).filter(models.Sequence.dogId == dog_id).order_by(models.Sequence.startTime.desc()).all()
+    return db.query(models.Sequence).filter(models.Sequence.dogId == dog_id).order_by(models.Sequence.id.desc()).all()
 
 # 특정 시퀀스와 연관된 BCG 데이터를 조회하는 함수
 def get_bcgdata_by_sequence(db: Session, sequence_id: int) -> list[models.Bcgdata]:
@@ -202,3 +221,7 @@ def get_recent_sequences(db: Session, dog_id: int) -> list[models.Sequence]:
     ).order_by(
         models.Sequence.id.desc()
     ).limit(100).all()
+
+# 특정 강아지의 모든 시퀀스를 시간 순으로 조회하는 함수
+def get_sequences_asc_by_dog(db: Session, dog_id: int) -> list[models.Sequence]:
+    return db.query(models.Sequence).filter(models.Sequence.dogId == dog_id).order_by(models.Sequence.id.asc()).all()

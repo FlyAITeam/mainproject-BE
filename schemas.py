@@ -145,7 +145,7 @@ class TargetExercise(TargetExerciseBase):
 class ExerciseLogBase(BaseModel):
     dogId: int
     date: datetime
-    exercise: int
+    exercise: float
 
 class ExerciseLogCreate(ExerciseLogBase):
     pass
@@ -154,4 +154,4 @@ class ExerciseLog(ExerciseLogBase):
     id: int
 
     class Config:
-        frmo_attributes = True
+        from_attributes = True

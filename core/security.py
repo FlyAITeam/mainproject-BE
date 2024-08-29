@@ -13,7 +13,7 @@ SECRET_KEY = os.getenv("JWT_KEY")
 if not SECRET_KEY:
     raise ValueError("JWT Secret Key is not set in environment variables")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

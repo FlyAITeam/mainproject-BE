@@ -28,7 +28,7 @@ def process_data(batch_data, model_path, dog_weight=20):
 
     # 운동 수치 계산
     # duration은 h 단위로 전환
-    duration = (data['timestamp'].iloc[-1] - data['timestamp'].iloc[0]) / 1000.0 / 60
+    duration = 5.6 / 60
     activity_score = calculate_activity(cluster, duration, dog_weight)
 
     # 클러스터 매핑

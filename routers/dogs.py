@@ -3,9 +3,9 @@ from fastapi.responses import JSONResponse, FileResponse
 from sqlalchemy.orm import Session
 from database import get_db
 from routers.auth import verify_and_refresh_token, decode_access_token
-from crud import create_dog, get_user_by_loginId, create_picture, get_pictures_by_dog, get_dog_by_user, create_target_exercise
-from crud import get_sequences_by_dog, get_bcgdata_by_sequence, get_user_by_loginId, get_dog_by_user, get_target_exercise, get_recent_sequences
-from schemas import DogCreate, PictureCreate, TargetExerciseCreate
+from crud import create_dog, get_user_by_loginId, create_picture, get_pictures_by_dog, get_dog_by_user, create_target_exercise, create_exercise_log, get_last_days_average_exercise
+from crud import get_sequences_by_dog, get_bcgdata_by_sequence, get_user_by_loginId, get_dog_by_user, get_target_exercise, get_recent_sequences, update_target_exercise
+from schemas import DogCreate, PictureCreate, TargetExerciseCreate, ExerciseLogCreate
 from datetime import datetime, timedelta
 import logging
 from pydantic import ValidationError
@@ -381,7 +381,8 @@ async def get_heart_data(accessToken: str = Header(...), db: Session = Depends(g
             content={
                 "intensity": latest_sequence.intentsity,
                 "bcgData": bcg_data_list
-            }
+            },
+            headers={"accessToken": result}
         )
 
     except Exception as e:
@@ -434,7 +435,8 @@ async def get_exercise_data(accessToken: str = Header(...), db: Session = Depend
             content={
                 "target": target_exercise.target,
                 "today": target_exercise.today
-            }
+            },
+            headers={"accessToken": result}
         )
 
     except Exception as e:
@@ -498,7 +500,8 @@ async def get_sequences(accessToken: str = Header(...), db: Session = Depends(ge
 
         return JSONResponse(
             status_code=status.HTTP_200_OK,
-            content={"sequenceDatas": sequence_datas}
+            content={"sequenceDatas": sequence_datas},
+            headers={"accessToken": result}
         )
 
     except Exception as e:
@@ -506,4 +509,77 @@ async def get_sequences(accessToken: str = Header(...), db: Session = Depends(ge
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"errorMessage": "Server error"}
+        )
+
+@router.get("/update-exercise", status_code=status.HTTP_200_OK)
+async def update_exercise_and_target(
+    accessToken: str = Header(...),
+    db: Session = Depends(get_db)
+):
+    # 토큰 검증
+    is_valid, result = verify_and_refresh_token(db, accessToken)
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token"
+        )
+
+    try:
+        # Access Token에서 로그인 ID 추출
+        payload = decode_access_token(result)
+        loginId = payload.get("sub")
+        db_user = get_user_by_loginId(db, loginId)
+        if not db_user:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="User not found"
+            )
+
+        # 사용자에 해당하는 강아지 정보 조회
+        dog = get_dog_by_user(db, db_user.id)
+        if not dog:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Dog information does not exist"
+            )
+
+        # 오늘의 운동량 가져오기
+        target_exercise = get_target_exercise(db, dog.id)
+        if not target_exercise:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Target exercise not found"
+            )
+        returnTarget = target_exercise.target
+        returnToday = target_exercise.today
+
+        # 오늘의 운동량을 로그에 기록
+        excerciseData = ExerciseLogCreate(
+            dogId=dog.id,
+            date=datetime.utcnow(),
+            exercise=returnToday
+        )
+        create_exercise_log(db, excerciseData)
+
+        # 오늘의 운동량 초기화
+        target_exercise.today = 0
+        db.commit()
+        db.refresh(target_exercise)
+
+        # 최근 5일간의 운동량 평균 계산
+        average_exercise = get_last_days_average_exercise(db, dog.id, returnToday, returnTarget)
+        # 목표 운동량 업데이트
+        update_target_exercise(db, dog.id, average_exercise)
+
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"target": returnTarget, "today": returnToday},
+            headers={"accessToken": result}
+        )
+
+    except Exception as e:
+        logger.error(f"Error updating exercise: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Server error"
         )
